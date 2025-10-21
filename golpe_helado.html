@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Raspados ($COP) - Final</title>
+    <style>
+        /* === CÓDIGO CSS (ESTILOS Y DECORACIÓN) === */
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            max-width: 450px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background-color: #f4f4f9; 
+        }
+        h1 { 
+            text-align: center; 
+            color: #ff6f00; 
+            border-bottom: 2px solid #ff6f00; 
+            padding-bottom: 10px; 
+        }
+        .seccion { 
+            margin-bottom: 25px; 
+            padding: 15px; 
+            border: 1px solid #ccc; 
+            border-radius: 10px; 
+            background-color: #ffffff; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+        }
+        /* Estilo para las subsecciones */
+        .subseccion {
+            border-left: 5px solid #00796b;
+            padding-left: 10px;
+            margin-bottom: 15px;
+        }
+        .subseccion h4 {
+            color: #00796b;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        h3 { 
+            color: #00796b; 
+            margin-top: 0; 
+        }
+        .item { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 10px; 
+        }
+        .item label {
+            flex-grow: 1; 
+        }
+        /* Estilo para el campo de cantidad */
+        .item input[type="number"] {
+            width: 50px;
+            margin: 0 10px;
+            padding: 5px;
+            text-align: center;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .precio { 
+            color: #757575; 
+            font-weight: bold; 
+            width: 80px; 
+            text-align: right;
+        }
+        .resultado { 
+            margin-top: 30px; 
+            padding: 20px; 
+            background-color: #e0f2f1; 
+            border: 3px solid #00796b; 
+            border-radius: 10px; 
+            text-align: center; 
+        }
+        #precioTotal { 
+            font-size: 2.5em; 
+            font-weight: 900; 
+            color: #d32f2f; 
+            margin: 5px 0; 
+        }
+        .admin-btn { 
+            background-color: #00796b; 
+            color: white; 
+            border: none; 
+            padding: 10px 15px; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            display: block; 
+            width: 100%; 
+            margin-top: 20px; 
+        }
+        .admin-panel { 
+            padding: 15px; 
+            border: 1px dashed #00796b; 
+            margin-top: 15px; 
+            display: none; 
+        }
+        .admin-panel input, .admin-panel select { 
+            width: 100%; 
+            padding: 8px; 
+            margin-bottom: 10px; 
+            border: 1px solid #ccc; 
+            border-radius: 4px; 
+            box-sizing: border-box; 
+        }
+        .admin-panel button { 
+            background-color: #00bcd4; 
+            color: white; 
+            border: none; 
+            padding: 10px; 
+            border-radius: 5px; 
+            cursor: pointer; 
+        }
+        .admin-item { 
+            display: flex; 
+            justify-content: space-between; 
+            padding: 5px 0;
+            border-bottom: 1px dotted #eee;
+        }
+        .delete-btn {
+            background-color: #f44336; 
+            color: white; 
+            border: none; 
+            padding: 3px 8px; 
+            border-radius: 4px; 
+            cursor: pointer;
+            font-size: 0.8em;
+        }
+    </style>
+</head>
+<body>
+
+    <h1> 🍧 Calculadora de Raspados </h1>
+
+    <div id="ingredientes-container" class="seccion">
+        <h3>Selecciona los Ingredientes ($COP)</h3>
+    </div>
+
+    <div class="resultado">
+        <strong>TOTAL A PAGAR:</strong>
+        <p id="precioTotal">$0</p>
+    </div>
+
+    <button class="admin-btn" onclick="toggleAdminPanel()">Administrar Menú</button>
+    <div id="admin-panel" class="admin-panel">
+        <h3>Añadir Nuevo Ingrediente</h3>
+        <input type="text" id="new-nombre" placeholder="Nombre (Ej: Mango)">
+        <input type="number" id="new-precio" step="100" placeholder="Precio (Ej: 3500)">
+        
+        <select id="new-categoria">
+            <option value="Base">Base</option>
+            <option value="Jarabe">Jarabe</option>
+            <option value="Topping">Topping</option>
+            <option value="Fruta">Fruta</option>
+            <option value="Adicional">Adicional</option>
+        </select>
+        
+        <button onclick="addIngrediente()">Añadir a la Lista</button>
+        <hr>
+        
+        <h3>Eliminar o Revisar Ingredientes</h3>
+        <div id="lista-ingredientes">
+            </div>
+        <p>Los cambios se guardan localmente en tu navegador.</p>
+    </div>
+
+    <script>
+        // --- 1. BASE DE DATOS Y LÓGICA DE PERSISTENCIA ---
+        const DB_KEY = 'raspados_menu_db_co_v5'; // Versión actualizada para forzar la recarga
+        // PRECIO_BASE ha sido ELIMINADO. El cálculo comienza en 0.
+
+        // Estructura inicial de la base de datos
+        const menuInicial = {
+            ingredientes: [
+                { id: 'i0', nombre: "Raspado Base (Hielo)", precio: 5000, categoria: "Base" }, // Se considera un ítem normal.
+                { id: 'i1', nombre: "Jarabe Fresa", precio: 3500, categoria: "Jarabe" }, 
+                { id: 'i2', nombre: "Jarabe Tamarindo", precio: 4000, categoria: "Jarabe" },
+                { id: 'i3', nombre: "Leche Condensada", precio: 1500, categoria: "Topping" },
+                { id: 'i4', nombre: "Fruta Picada", precio: 2500, categoria: "Fruta" }
+            ]
+        };
+
+        let menu; 
+
+        function generateUniqueId() {
+            return Date.now().toString(36) + Math.random().toString(36).substring(2);
+        }
+
+        // --- 2. FUNCIONES DE PERSISTENCIA ---
+
+        function saveMenu(newMenu) {
+            menu = newMenu;
+            localStorage.setItem(DB_KEY, JSON.stringify(menu));
+        }
+
+        function loadMenu() {
+            const storedMenu = localStorage.getItem(DB_KEY);
+            if (storedMenu) {
+                return JSON.parse(storedMenu);
+            }
+            const initial = JSON.parse(JSON.stringify(menuInicial)); 
+            initial.ingredientes.forEach(item => item.id = item.id || generateUniqueId());
+            saveMenu(initial);
+            return initial;
+        }
+
+        menu = loadMenu(); 
+
+
+        // --- 3. FUNCIONES DE CÁLCULO Y GENERACIÓN DE INTERFAZ ---
+
+        window.calcularTotal = function() {
+            let total = 0; // Empieza en cero.
+            
+            // Iterar sobre los campos de cantidad (input type="number")
+            const camposCantidad = document.querySelectorAll('input[data-ingrediente-precio]');
+            
+            camposCantidad.forEach(input => {
+                // Obtener la cantidad escrita (o 0 si está vacío/inválido)
+                const cantidad = parseInt(input.value) || 0;
+                const precioUnidad = parseFloat(input.dataset.ingredientePrecio);
+                
+                if (cantidad > 0) {
+                    total += cantidad * precioUnidad;
+                }
+            });
+
+            // Formato a pesos colombianos ($COP)
+            const formatoCOP = new Intl.NumberFormat('es-CO', {
+                style: 'currency',
+                currency: 'COP',
+                minimumFractionDigits: 0 
+            }).format(total);
+
+            document.getElementById('precioTotal').textContent = formatoCOP;
+        }
+
+        function generarInterfaz() {
+            const ingredientesContainer = document.getElementById('ingredientes-container');
+            ingredientesContainer.innerHTML = '<h3>Selecciona los Ingredientes ($COP)</h3>'; 
+            
+            // Agrupar ingredientes por categoría
+            const categorias = menu.ingredientes.reduce((acc, item) => {
+                const categoria = item.categoria || 'Sin Categoría';
+                if (!acc[categoria]) {
+                    acc[categoria] = [];
+                }
+                acc[categoria].push(item);
+                return acc;
+            }, {});
+
+            // Generar HTML por categoría
+            for (const categoria in categorias) {
+                let htmlCategoria = `<div class="subseccion"><h4>${categoria}</h4>`;
+                
+                categorias[categoria].forEach(item => {
+                    const precioCOP = new Intl.NumberFormat('es-CO', {
+                        style: 'currency',
+                        currency: 'COP',
+                        minimumFractionDigits: 0
+                    }).format(item.precio);
+                    
+                    const id = `input-${item.id}`;
+                    htmlCategoria += `
+                        <div class="item">
+                            <label for="${id}">${item.nombre}</label>
+                            
+                            <input 
+                                type="number" 
+                                id="${id}" 
+                                min="0"
+                                value="0"
+                                data-ingrediente-precio="${item.precio}" 
+                                onchange="calcularTotal()"
+                                oninput="calcularTotal()">
+                                
+
+                            <span class="precio">${precioCOP} c/u</span>
+                        </div>
+                    `;
+                });
+                htmlCategoria += `</div>`;
+                ingredientesContainer.innerHTML += htmlCategoria;
+            }
+        }
+
+
+        // --- 4. FUNCIONES DE ADMINISTRACIÓN (Punto de la corrección) ---
+
+        function generateAdminList() {
+            const listContainer = document.getElementById('lista-ingredientes');
+            let html = '<h4>Lista de Ingredientes:</h4>';
+
+            if (menu.ingredientes && menu.ingredientes.length > 0) {
+                menu.ingredientes.forEach(item => {
+                    const precioCOP = new Intl.NumberFormat('es-CO', {
+                        style: 'currency',
+                        currency: 'COP',
+                        minimumFractionDigits: 0
+                    }).format(item.precio);
+
+                    html += `
+                        <div class="admin-item">
+                            <span>[${item.categoria || 'Sin Cat.'}] ${item.nombre} (${precioCOP})</span>
+                            <button class="delete-btn" onclick="deleteIngrediente('${item.id}')">Eliminar</button>
+                        </div>
+                    `;
+                });
+            } else {
+                html += '<p style="color: #f44336; font-style: italic;">No hay ingredientes cargados. Usa el formulario de arriba para añadir el primero.</p>';
+            }
+
+            listContainer.innerHTML = html;
+        }
+
+        window.toggleAdminPanel = function() {
+            const panel = document.getElementById('admin-panel');
+            const isVisible = panel.style.display === 'block';
+
+            if (!isVisible) {
+                // 💡 CORRECCIÓN: Aseguramos que la lista se cargue justo antes de mostrar el panel
+                generateAdminList(); 
+            }
+            
+            panel.style.display = isVisible ? 'none' : 'block';
+        }
+
+        window.addIngrediente = function() {
+            const nombre = document.getElementById('new-nombre').value.trim();
+            const precio = parseFloat(document.getElementById('new-precio').value);
+            const categoria = document.getElementById('new-categoria').value; 
+
+            if (!nombre || isNaN(precio) || precio < 0 || !categoria) {
+                alert("Por favor, rellena todos los campos correctamente.");
+                return;
+            }
+
+            const newItem = { id: generateUniqueId(), nombre: nombre, precio: precio, categoria: categoria };
+            menu.ingredientes.push(newItem);
+
+            saveMenu(menu);
+            alert(`"${nombre}" añadido a la categoría "${categoria}" con éxito.`);
+            
+            document.getElementById('new-nombre').value = '';
+            document.getElementById('new-precio').value = '';
+            
+            generarInterfaz(); 
+            generateAdminList(); 
+            calcularTotal();
+        }
+
+
+        window.deleteIngrediente = function(id) {
+            if (!confirm(`¿Estás seguro de que quieres eliminar este ingrediente?`)) return;
+
+            menu.ingredientes = menu.ingredientes.filter(item => item.id !== id);
+
+            saveMenu(menu);
+            alert(`Ingrediente eliminado.`);
+            generarInterfaz(); 
+            generateAdminList(); 
+            calcularTotal();
+        }
+
+
+        // --- 5. INICIALIZACIÓN ---
+        window.onload = () => {
+            generarInterfaz();
+            calcularTotal();
+        };
+    </script>
+</body>
+</html>
